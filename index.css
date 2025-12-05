@@ -1,1 +1,93 @@
+/* GLOBAL VARIABLES from your PNG analysis */
+:root {
+    --bg-green: #6a9c53;  /* Mossy Green */
+    --header-tan: #3e5732; /* Header Tan */
+    --input-orange: #cfaa7d; /* Search bar orange */
+    --border-black: #000000;
+}
 
+body {
+    background-color: var(--bg-green);
+    /* Standard font kept as requested */
+}
+
+/* --- UTILITIES FOR THE "SKETCH" LOOK --- */
+
+/* Backgrounds */
+.bg-tan { background-color: var(--header-tan) !important; }
+.bg-dark-orange { background-color: var(--input-orange) !important; }
+
+/* Thick Borders (The key to the look) */
+.sketch-border {
+    border: 3px solid var(--border-black) !important;
+}
+
+.sketch-border-bottom {
+    border-bottom: 4px solid var(--border-black) !important;
+}
+
+/* Hard Shadows */
+.sketch-shadow {
+    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
+}
+
+/* --- COMPONENT STYLES --- */
+
+/* Navbar Tweaks */
+.navbar {
+    box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+}
+
+/* Inputs & Selects */
+.sketch-input, .form-select {
+    border: 3px solid var(--border-black) !important;
+    border-radius: 8px !important;
+    background-color: #f8f9fa;
+}
+
+.sketch-input:focus, .form-select:focus {
+    background-color: #fff;
+    box-shadow: none; /* Remove Bootstrap glow */
+    outline: 2px dashed var(--border-black);
+}
+
+/* Placeholder text color for the orange search bar */
+.placeholder-black::placeholder {
+    color: #4a3b2a;
+    opacity: 0.8;
+}
+
+/* Buttons */
+.sketch-btn {
+    border: 3px solid var(--border-black) !important;
+    background-color: var(--bg-green);
+    box-shadow: 3px 3px 0 #000;
+    transition: transform 0.1s;
+    font-size: 1.2rem;
+}
+
+.sketch-btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 #000;
+    background-color: #558b46; /* Slightly darker green */
+    color: white !important;
+}
+
+.sketch-btn-delete {
+    border: 3px solid var(--border-black) !important;
+    box-shadow: 2px 2px 0 #000;
+}
+
+/* Checkboxes / Radios */
+.sketch-check {
+    border: 2px solid var(--border-black);
+}
+.sketch-check:checked {
+    background-color: var(--bg-green);
+    border-color: var(--border-black);
+}
+
+/* Table overrides */
+.custom-table td {
+    border-bottom: 1px solid var(--border-black);
+}
