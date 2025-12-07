@@ -8,6 +8,9 @@ const animalsTableBody = document.querySelector("#animalsTable tbody");
 const submitBtn = animalForm.querySelector("button[type='submit']");
 const animalGrid = document.getElementById("animalGrid");
 
+// NEW: photo input element
+const animalPhotoInput = document.getElementById("animalPhoto"); // NEW: get file input
+
 // If you're using a Bootstrap modal for this form
 const addAnimalModalElement = document.getElementById("addAnimalModal");
 
@@ -25,7 +28,8 @@ function generateId() {
 }
 
 // Collect data from form fields
-function collectFormData() {
+// CHANGED: accept an optional extraFields object (e.g., photo) that merges into the result
+function collectFormData(extraFields = {}) {
   return {
     type: document.getElementById("animalType").value.trim(),
     breed: document.getElementById("breed").value.trim(),
@@ -43,6 +47,7 @@ function collectFormData() {
     feedingTime: document.getElementById("feedingTime").value,
     feedingAmount: document.getElementById("feedingAmount").value.trim(),
     feedingWhat: document.getElementById("feedingWhat").value.trim(),
+    ...extraFields, // NEW: merge in extra fields like { photo: ... }
   };
 }
 
@@ -54,6 +59,11 @@ function resetForm() {
   submitBtn.textContent = "Save Animal (Local)";
   submitBtn.classList.remove("btn-warning");
   submitBtn.classList.add("btn-success");
+
+  // NEW: clear the file input when resetting form
+  if (animalPhotoInput) {
+    animalPhotoInput.value = "";
+  }
 }
 
 // =========================
@@ -69,6 +79,14 @@ function renderTable() {
   animals.forEach((a) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <!-- NEW: Photo column -->
+      <td>
+        ${
+          a.photo
+            ? `<img src="${a.photo}" alt="Photo of ${a.type || "animal"}" class="img-thumbnail" style="max-width: 80px; max-height: 80px; object-fit: cover;">`
+            : "—"
+        }
+      </td>
       <td>${a.type || "-"}</td>
       <td>${a.breed || "-"}</td>
       <td>${a.sex || "-"}</td>
@@ -92,7 +110,7 @@ function renderTable() {
   });
 }
 
-// Render the card grid (from first code snippet)
+// Render the card grid
 function renderCards() {
   if (!animalGrid) return;
 
@@ -104,12 +122,15 @@ function renderCards() {
     const sex = a.sex || "";
     const separator = sex && breed ? " | " : "";
 
+    // NEW: use actual photo if available; fallback to placeholder
+    const imageSrc =
+      a.photo ||
+      `https://placehold.co/300x250?text=${encodeURIComponent(type)}`; // CHANGED
+
     const cardHTML = `
       <div class="col-md-6 col-lg-3 mb-3">
         <div class="card h-100 shadow-sm animal-card">
-          <img src="https://placehold.co/300x250?text=${encodeURIComponent(
-            type
-          )}" class="card-img-top" alt="Picture of a ${type}">
+          <img src="${imageSrc}" class="card-img-top" alt="Picture of a ${type}">
           <div class="card-body">
             <h5 class="card-title">${type}</h5>
             <p class="card-text text-muted">${sex}${separator}${breed}</p>
@@ -139,22 +160,25 @@ function renderUI() {
 // CRUD Functions
 // =========================
 
-// Add new animal
-function addAnimal() {
-  const animal = collectFormData();
-  animal.id = generateId();
+// CHANGED: Add new animal now receives the constructed animalData (including photo)
+function addAnimal(animalData) {
+  const animal = {
+    ...animalData,
+    id: generateId(),
+  };
   animals.push(animal);
   renderUI();
 }
 
-// Update an existing animal
-function updateAnimal(id) {
+// CHANGED: Update an existing animal now receives animalData (including photo)
+function updateAnimal(id, animalData) {
   const index = animals.findIndex((a) => a.id === id);
   if (index === -1) return;
 
-  const updated = collectFormData();
-  updated.id = id;
-  animals[index] = updated;
+  animals[index] = {
+    ...animalData,
+    id,
+  };
   renderUI();
 }
 
@@ -186,6 +210,9 @@ function handleEdit(id) {
   } else if (animal.sex === "Female") {
     document.getElementById("sexFemale").checked = true;
   }
+
+  // NOTE: we do NOT pre-fill the file input; browser security won't allow it.
+  // The existing animal.photo stays on the object until user chooses a new file.
 
   editId = id;
 
@@ -235,7 +262,7 @@ function handleDelete(id) {
 // Event Listeners
 // =========================
 
-// One unified submit handler (combines both of your originals)
+// One unified submit handler
 animalForm.addEventListener("submit", function (e) {
   e.preventDefault();
 
@@ -262,11 +289,24 @@ animalForm.addEventListener("submit", function (e) {
     confirmButtonText: isEditMode ? "Yes, Update" : "Yes, Save",
     cancelButtonText: "Cancel",
   }).then((result) => {
-    if (result.isConfirmed) {
+    if (!result.isConfirmed) return;
+
+    // NEW: Handle photo file reading here (async) before calling add/update
+    const file = animalPhotoInput?.files?.[0] || null;
+
+    // If we are editing, keep existing photo if no new one is chosen
+    const existingAnimal = isEditMode
+      ? animals.find((a) => a.id === editId)
+      : null;
+    const existingPhoto = existingAnimal?.photo || "";
+
+    // NEW: finalize function that actually saves or updates animal
+    const finalizeSave = (photoDataUrl) => {
+      const formData = collectFormData({ photo: photoDataUrl }); // CHANGED: include photo
       if (isEditMode) {
-        updateAnimal(editId);
+        updateAnimal(editId, formData);
       } else {
-        addAnimal();
+        addAnimal(formData);
       }
 
       // Hide the Bootstrap modal (if used)
@@ -277,7 +317,7 @@ animalForm.addEventListener("submit", function (e) {
         }
       }
 
-      // Reset the form
+      // Reset the form (also clears file input)
       resetForm();
 
       // Success toast
@@ -291,6 +331,19 @@ animalForm.addEventListener("submit", function (e) {
         showConfirmButton: false,
         timer: 2000,
       });
+    };
+
+    if (file) {
+      // NEW: read the chosen image file as Data URL
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target.result;
+        finalizeSave(dataUrl);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // NEW: no new photo selected -> use existing (for edit) or empty string (for add)
+      finalizeSave(existingPhoto);
     }
   });
 });
@@ -325,7 +378,16 @@ function showAnimalDetails(id) {
     return;
   }
 
+  // NEW: include image in the details popup if present
+  const photoHtml = animal.photo
+    ? `<div class="mb-3 text-center">
+         <img src="${animal.photo}" alt="Photo of ${animal.type || "animal"}"
+              style="max-width: 200px; max-height: 200px; object-fit: cover; border-radius: 0.5rem;">
+       </div>`
+    : "";
+
   const detailsHtml = `
+    ${photoHtml}
     <p><strong>Type:</strong> ${animal.type || "-"}</p>
     <p><strong>Breed:</strong> ${animal.breed || "-"}</p>
     <p><strong>Sex:</strong> ${animal.sex || "-"}</p>
