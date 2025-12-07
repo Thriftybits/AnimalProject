@@ -1,6 +1,3 @@
-// IDK WHERE THIS APP.JS CAME FROM IT JUST SHOWED UP
-
-
 // Listen for the form submit inside the Modal
 document.getElementById('animalForm').addEventListener('submit', function(e) {
     e.preventDefault(); // Stop the page from reloading
