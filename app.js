@@ -1,0 +1,66 @@
+// Listen for the form submit inside the Modal
+document.getElementById('animalForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // Stop the page from reloading
+
+    // 1. Get the values from the form inputs
+    const type = document.getElementById('animalType').value;
+    const breed = document.getElementById('breed').value;
+    const sex = document.querySelector('input[name="sex"]:checked').value;
+
+    // Simple validation
+    if (!type) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Please enter an Animal Type!',
+        });
+        return;
+    }
+
+    // 2. Create the HTML for the new card
+    const cardHTML = `
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm animal-card">
+                <img src="https://placehold.co/300x250?text=${type}" class="card-img-top" alt="Picture of a ${type}">
+                <div class="card-body">
+                    <h5 class="card-title">${type}</h5>
+                    <p class="card-text text-muted">${sex} | ${breed}</p>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="showAnimalDetails()">See Info</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 3. Add the card to the grid
+    const grid = document.getElementById('animalGrid');
+    grid.innerHTML += cardHTML;
+
+    // 4. Close the modal and show success alert
+    // Using bootstrap's modal instance method to hide it
+    const modalElement = document.getElementById('addAnimalModal');
+    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+    modalInstance.hide();
+
+    // Reset the form for next time
+    e.target.reset();
+
+    // Success popup
+    Swal.fire({
+        icon: 'success',
+        title: 'Saved!',
+        text: 'Your new animal has been added.',
+        timer: 1500,
+        showConfirmButton: false
+    });
+});
+
+// Placeholder for the "See Info" buttons
+function showAnimalDetails() {
+    Swal.fire({
+        title: 'Animal Details',
+        text: 'This is where the vet info and feeding details will go later!',
+        icon: 'info'
+    });
+}
