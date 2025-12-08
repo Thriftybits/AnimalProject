@@ -18,7 +18,7 @@
 
   <nav class="navbar navbar-expand-lg mb-4 sketch-border-bottom bg-tan py-3" aria-label="Main Navigation">
     <div class="container-fluid">
-      <a href="index.html" class="navbar-brand fs-1 fw-bold text-decoration-underline text-white ms-3">HOME</a>
+      <a href="index.html" class="navbar-brand fs-1 fw-bold text-decoration-underline text-black ms-3">HOME</a>
       
       <button class="navbar-toggler sketch-border" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -36,7 +36,6 @@
     </header>
 
     <div class="row g-4">
-      <!-- ================= LEFT SIDE: FORM ================= -->
       <section class="col-lg-5" aria-labelledby="form-heading">
         <div class="card h-100 sketch-card border-0 bg-transparent">
           <div class="card-body bg-white sketch-border sketch-shadow rounded-4 p-4">
@@ -45,9 +44,7 @@
               <h2 id="form-heading" class="h4 mb-0 fw-bold text-black">Add Animal</h2>
             </div>
 
-            <!-- SINGLE form tag (fixed duplicate) -->
             <form id="animalForm" novalidate>
-              <!-- Animal Name -->
               <div class="mb-3">
                 <label for="animalName" class="form-label fw-bold text-black">
                   Animal Name
@@ -193,7 +190,6 @@
                 ></textarea>
               </div>
 
-              <!-- PHOTO UPLOAD (from old.html, upgraded with preview) -->
               <div class="mb-3">
                 <label for="animalPhoto" class="form-label fw-bold text-black">Animal Photo</label>
                 <input
@@ -203,9 +199,8 @@
                   accept="image/*"
                   aria-label="Animal Photo"
                 />
-                <small class="text-muted">Image is stored locally (not uploaded).</small>
+                <small class="text-muted">Image is stored in the database.</small>
 
-                <!-- Live preview -->
                 <div class="mt-2 text-center">
                   <img
                     id="animalPhotoPreview"
@@ -276,7 +271,6 @@
         </div>
       </section>
 
-      <!-- ================= RIGHT SIDE: SAVED ANIMALS ================= -->
       <section class="col-lg-7" aria-labelledby="list-heading">
         <div class="card h-100 border-0 bg-transparent">
           <div class="card-body bg-white sketch-border sketch-shadow rounded-4 p-4">
@@ -299,7 +293,6 @@
                 </div>
               </form>
 
-              <!-- Give this button the same id as old.html so app.js can hook it -->
               <button id="deleteAnimals" class="btn btn-danger btn-sm sketch-btn-delete rounded-pill fw-bold text-white">
                 Delete
               </button>
@@ -313,7 +306,6 @@
               >
                 <thead class="table-light">
                   <tr>
-                    <!-- merged: PHOTO + NAME + existing columns + ACTIONS -->
                     <th scope="col" class="fw-bold text-black border-black border-bottom-2">Photo</th>
                     <th scope="col" class="fw-bold text-black border-black border-bottom-2">Name</th>
                     <th scope="col" class="fw-bold text-black border-black border-bottom-2">Type</th>
@@ -325,12 +317,15 @@
                     <th scope="col" class="fw-bold text-black border-black border-bottom-2">Actions</th>
                   </tr>
                 </thead>
-
                 <tbody aria-live="polite" id="animalTableBody">
                 </tbody>
               </table>
             </div>
-            <p class="text-muted small mb-0 fw-bold">
+
+            <div id="animalGrid" class="row g-3 mt-4">
+              </div>
+
+            <p class="text-muted small mb-0 fw-bold mt-3">
               Right now this list is stored in memory in your browser.  
               Can later connect it to the Node / SQLite backend.
             </p>
@@ -344,4 +339,3 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

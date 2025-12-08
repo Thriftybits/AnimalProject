@@ -1,9 +1,8 @@
 // =========================
-// Animal Tracker Frontend
+// Animal Tracker Frontend (Database Connected)
 // =========================
 
-// ---- In-memory data store ----
-let animals = [];          // all animals
+let animals = [];          // Now serves as a cache for DB data
 let editId = null;         // currently editing animal id (null = add mode)
 let currentSearch = "";    // search query
 let currentPhotoDataUrl = ""; // base64 image for the current form
@@ -12,35 +11,115 @@ let currentPhotoDataUrl = ""; // base64 image for the current form
 const animalForm = document.getElementById("animalForm");
 const animalsTableBody = document.getElementById("animalTableBody");
 const searchInput = document.getElementById("searchAnimals");
-const deleteAllBtn = document.getElementById("deleteAnimals");
-const submitBtn = animalForm
-  ? animalForm.querySelector("button[type='submit']")
-  : null;
-
+const deleteAllBtn = document.getElementById("deleteAnimals"); // Note: Bulk delete not supported by API yet
+const submitBtn = animalForm ? animalForm.querySelector("button[type='submit']") : null;
 const animalPhotoInput = document.getElementById("animalPhoto");
 const animalPhotoPreview = document.getElementById("animalPhotoPreview");
-
-// Optional card/grid container (if you ever add one)
 const animalGrid = document.getElementById("animalGrid");
 
 // =========================
-// Helpers
+// 1. API FUNCTIONS (The Connection Logic)
 // =========================
 
-// Generate a unique id
-function generateId() {
-  if (window.crypto && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return (
-    "a_" +
-    Date.now().toString(36) +
-    "_" +
-    Math.random().toString(36).slice(2, 8)
-  );
+// LOAD DATA
+async function fetchAnimals() {
+    console.log("[Client] Fetching animals from server...");
+    try {
+        const response = await fetch('/animals');
+        
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        
+        const result = await response.json();
+        console.log(`[Client] Server responded. Found ${result.data.length} animals.`);
+        
+        animals = result.data; // Update local array with DB data
+        rerenderAll();
+    } catch (error) {
+        console.error("[Client] Error loading animals:", error);
+        // Optional: Swal.fire("Connection Error", "Could not talk to the database.", "error");
+    }
 }
 
-// Clear photo preview
+// SAVE DATA
+async function saveAnimalToDB(animalData) {
+    console.log("[Client] Sending SAVE request to server...");
+    try {
+        const response = await fetch('/animals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(animalData)
+        });
+
+        if (response.ok) {
+            console.log("[Client] Save Successful!");
+            fetchAnimals(); // Reload data to show the new entry
+            return true;
+        } else {
+            console.error("[Client] Server rejected save:", await response.text());
+        }
+    } catch (error) { console.error("[Client] Save Network Error:", error); }
+    return false;
+}
+
+// UPDATE DATA
+async function updateAnimalInDB(animalData) {
+    console.log("[Client] Sending UPDATE request for ID:", animalData.id);
+    try {
+        const response = await fetch('/animals', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(animalData)
+        });
+
+        if (response.ok) {
+            console.log("[Client] Update Successful!");
+            fetchAnimals(); 
+            return true;
+        }
+    } catch (error) { console.error("[Client] Update Network Error:", error); }
+    return false;
+}
+
+// DELETE DATA
+async function deleteAnimalFromDB(id) {
+    console.log("[Client] Sending DELETE request for ID:", id);
+    try {
+        const response = await fetch('/animals', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        });
+
+        if (response.ok) {
+            console.log("[Client] Delete Successful!");
+            fetchAnimals(); 
+            return true;
+        }
+    } catch (error) { console.error("[Client] Delete Network Error:", error); }
+    return false;
+}
+
+// =========================
+// 2. FORM & PHOTO HANDLING
+// =========================
+
+if (animalPhotoInput) {
+  animalPhotoInput.addEventListener("change", function () {
+    const file = this.files && this.files[0];
+    if (!file) {
+      clearPhotoPreview();
+      return;
+    }
+    console.log("[Client] Processing photo selection...");
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      currentPhotoDataUrl = e.target.result; // base64 string
+      updatePhotoPreview(currentPhotoDataUrl);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function clearPhotoPreview() {
   currentPhotoDataUrl = "";
   if (animalPhotoPreview) {
@@ -49,7 +128,6 @@ function clearPhotoPreview() {
   }
 }
 
-// Update photo preview from data URL
 function updatePhotoPreview(dataUrl) {
   if (!animalPhotoPreview) return;
   if (!dataUrl) {
@@ -60,31 +138,9 @@ function updatePhotoPreview(dataUrl) {
   animalPhotoPreview.style.display = "inline-block";
 }
 
-// =========================
-// Photo input handling
-// =========================
-if (animalPhotoInput) {
-  animalPhotoInput.addEventListener("change", function () {
-    const file = this.files && this.files[0];
-    if (!file) {
-      clearPhotoPreview();
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      currentPhotoDataUrl = e.target.result; // base64
-      updatePhotoPreview(currentPhotoDataUrl);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// =========================
-// Form helpers
-// =========================
 function collectFormData() {
   return {
+    id: editId, // Include ID if we are editing
     name: document.getElementById("animalName")?.value.trim() || "",
     type: document.getElementById("animalType")?.value.trim() || "",
     breed: document.getElementById("breed")?.value.trim() || "",
@@ -100,10 +156,9 @@ function collectFormData() {
     visitType: document.getElementById("visitType")?.value || "",
     visitNotes: document.getElementById("visitNotes")?.value.trim() || "",
     feedingTime: document.getElementById("feedingTime")?.value || "",
-    feedingAmount:
-      document.getElementById("feedingAmount")?.value.trim() || "",
+    feedingAmount: document.getElementById("feedingAmount")?.value.trim() || "",
     feedingWhat: document.getElementById("feedingWhat")?.value.trim() || "",
-    // photo is handled via currentPhotoDataUrl
+    photo: currentPhotoDataUrl // Send image data to server
   };
 }
 
@@ -111,8 +166,8 @@ function validateFormData(data) {
   if (!data.type) {
     Swal.fire({
       icon: "error",
-      title: "Missing required info",
-      text: "Please enter the Type of Animal before saving.",
+      title: "Missing Info",
+      text: "Please enter the Type of Animal.",
     });
     return false;
   }
@@ -123,11 +178,9 @@ function resetForm() {
   if (!animalForm) return;
   animalForm.reset();
 
-  // Default sex back to Male
   const sexMaleRadio = document.getElementById("sexMale");
   if (sexMaleRadio) sexMaleRadio.checked = true;
 
-  // Reset editing state
   editId = null;
   if (submitBtn) {
     submitBtn.textContent = "Save Animal (Local)";
@@ -135,264 +188,67 @@ function resetForm() {
     submitBtn.classList.add("btn-success");
   }
 
-  // Clear photo input & preview
-  if (animalPhotoInput) {
-    animalPhotoInput.value = "";
-  }
+  if (animalPhotoInput) animalPhotoInput.value = "";
   clearPhotoPreview();
 }
 
 // =========================
-// Filtering
+// 3. EVENT HANDLERS
 // =========================
-function getFilteredAnimals() {
-  if (!currentSearch) return animals;
-  const term = currentSearch.toLowerCase();
-  return animals.filter((a) => {
-    return (
-      (a.name || "").toLowerCase().includes(term) ||
-      (a.type || "").toLowerCase().includes(term) ||
-      (a.breed || "").toLowerCase().includes(term) ||
-      (a.location || "").toLowerCase().includes(term) ||
-      (a.animalId || "").toLowerCase().includes(term) ||
-      (a.description || "").toLowerCase().includes(term)
-    );
-  });
-}
 
-// =========================
-// Rendering
-// =========================
-function renderTable() {
-  if (!animalsTableBody) return;
-
-  animalsTableBody.innerHTML = "";
-  const list = getFilteredAnimals();
-
-  if (!list.length) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 9; // Photo, Name, Type, Breed, Sex, Birthdate, Location, ID, Actions
-    td.className = "text-center text-muted fw-bold";
-    td.textContent = "No animals saved yet.";
-    tr.appendChild(td);
-    animalsTableBody.appendChild(tr);
-    return;
-  }
-
-  list.forEach((a) => {
-    const tr = document.createElement("tr");
-    tr.dataset.id = a.id;
-
-    const displayTitle = a.name || a.type || "Animal";
-
-    const photoCellHtml = a.photo
-      ? `<img 
-           src="${a.photo}" 
-           alt="Photo of ${displayTitle}"
-           class="img-thumbnail"
-           style="max-width: 60px; max-height: 60px; object-fit: cover;">
-        `
-      : `<span class="text-muted">No photo</span>`;
-
-    tr.innerHTML = `
-      <td>${photoCellHtml}</td>
-      <td>${a.name || "-"}</td>
-      <td>${a.type || "-"}</td>
-      <td>${a.breed || "-"}</td>
-      <td>${a.sex || "-"}</td>
-      <td>${a.birthdate || "-"}</td>
-      <td>${a.location || "-"}</td>
-      <td>${a.animalId || "-"}</td>
-      <td>
-        <button 
-          class="btn btn-sm btn-outline-primary me-1 btn-edit" 
-          type="button"
-          data-id="${a.id}">
-          Edit
-        </button>
-        <button 
-          class="btn btn-sm btn-outline-danger btn-delete" 
-          type="button"
-          data-id="${a.id}">
-          Delete
-        </button>
-      </td>
-    `;
-
-    animalsTableBody.appendChild(tr);
-  });
-}
-
-// Optional card view if you add a grid container later
-function renderCards() {
-  if (!animalGrid) return;
-  animalGrid.innerHTML = "";
-  const list = getFilteredAnimals();
-
-  list.forEach((a) => {
-    const displayTitle = a.name || a.type || "Animal";
-    const subtitleParts = [];
-    if (a.sex) subtitleParts.push(a.sex);
-    if (a.breed) subtitleParts.push(a.breed);
-    const subtitle = subtitleParts.join(" | ");
-
-    const imgSrc =
-      a.photo ||
-      "https://placehold.co/300x250?text=" + encodeURIComponent(displayTitle);
-
-    const cardHTML = `
-      <div class="col-md-6 col-lg-3 mb-3">
-        <div class="card h-100 shadow-sm animal-card">
-          <img 
-            src="${imgSrc}" 
-            class="card-img-top" 
-            alt="Picture of ${displayTitle}">
-          <div class="card-body">
-            <h5 class="card-title">${displayTitle}</h5>
-            <p class="card-text text-muted">${subtitle || ""}</p>
-            <div class="d-grid gap-2">
-              <button 
-                class="btn btn-outline-primary btn-sm" 
-                type="button"
-                onclick="showAnimalDetails('${a.id}')">
-                See Info
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    animalGrid.insertAdjacentHTML("beforeend", cardHTML);
-  });
-}
-
-function rerenderAll() {
-  renderTable();
-  renderCards();
-}
-
-// =========================
-// CRUD Handlers
-// =========================
-function handleSubmit(event) {
+async function handleSubmit(event) {
   event.preventDefault();
   if (!animalForm) return;
 
   const data = collectFormData();
   if (!validateFormData(data)) return;
 
+  // REPLACED: animals.push() with fetch calls
   if (editId) {
-    // Update existing animal
-    const idx = animals.findIndex((a) => a.id === editId);
-    if (idx !== -1) {
-      const existing = animals[idx];
-      animals[idx] = {
-        ...existing,
-        ...data,
-        // If user picked a new photo, use it; otherwise keep existing
-        photo: currentPhotoDataUrl || existing.photo || "",
-      };
+    // Editing existing animal
+    const success = await updateAnimalInDB(data);
+    if (success) {
+        Swal.fire({ icon: "success", title: "Updated", timer: 1500, showConfirmButton: false });
+        resetForm();
     }
-
-    Swal.fire({
-      icon: "success",
-      title: "Animal updated",
-      text: "The animal was updated successfully.",
-      timer: 1500,
-      showConfirmButton: false,
-    });
   } else {
-    // Create new animal
-    const newAnimal = {
-      id: generateId(),
-      ...data,
-      photo: currentPhotoDataUrl || "",
-    };
-    animals.push(newAnimal);
-
-    Swal.fire({
-      icon: "success",
-      title: "Animal added",
-      text: "The animal was added to your list.",
-      timer: 1500,
-      showConfirmButton: false,
-    });
+    // Creating new animal
+    const success = await saveAnimalToDB(data);
+    if (success) {
+        Swal.fire({ icon: "success", title: "Saved", text: "Saved to database", timer: 1500, showConfirmButton: false });
+        resetForm();
+    }
   }
-
-  resetForm();
-  rerenderAll();
 }
 
 function handleEdit(id) {
   const animal = animals.find((a) => a.id === id);
   if (!animal || !animalForm) return;
 
-  // Fill form
-  const animalNameInput = document.getElementById("animalName");
-  if (animalNameInput) animalNameInput.value = animal.name || "";
+  console.log("[Client] Loading animal into form:", animal.name);
 
-  const animalTypeInput = document.getElementById("animalType");
-  if (animalTypeInput) animalTypeInput.value = animal.type || "";
+  // Fill text fields
+  const mapping = {
+      animalName: "name", animalType: "type", breed: "breed", birthdate: "birthdate",
+      weight: "weight", size: "size", animalId: "animalId", location: "location",
+      description: "description", notes: "notes", vetName: "vetName",
+      visitType: "visitType", visitNotes: "visitNotes", feedingTime: "feedingTime",
+      feedingAmount: "feedingAmount", feedingWhat: "feedingWhat"
+  };
 
-  const breedInput = document.getElementById("breed");
-  if (breedInput) breedInput.value = animal.breed || "";
-
-  const birthdateInput = document.getElementById("birthdate");
-  if (birthdateInput) birthdateInput.value = animal.birthdate || "";
-
-  const weightInput = document.getElementById("weight");
-  if (weightInput) weightInput.value = animal.weight || "";
-
-  const sizeInput = document.getElementById("size");
-  if (sizeInput) sizeInput.value = animal.size || "";
-
-  const animalIdInput = document.getElementById("animalId");
-  if (animalIdInput) animalIdInput.value = animal.animalId || "";
-
-  const locationInput = document.getElementById("location");
-  if (locationInput) locationInput.value = animal.location || "";
-
-  const descriptionInput = document.getElementById("description");
-  if (descriptionInput) descriptionInput.value = animal.description || "";
-
-  const notesInput = document.getElementById("notes");
-  if (notesInput) notesInput.value = animal.notes || "";
-
-  const vetNameInput = document.getElementById("vetName");
-  if (vetNameInput) vetNameInput.value = animal.vetName || "";
-
-  const visitTypeSelect = document.getElementById("visitType");
-  if (visitTypeSelect) visitTypeSelect.value = animal.visitType || "";
-
-  const visitNotesInput = document.getElementById("visitNotes");
-  if (visitNotesInput) visitNotesInput.value = animal.visitNotes || "";
-
-  const feedingTimeInput = document.getElementById("feedingTime");
-  if (feedingTimeInput) feedingTimeInput.value = animal.feedingTime || "";
-
-  const feedingAmountInput = document.getElementById("feedingAmount");
-  if (feedingAmountInput) feedingAmountInput.value =
-    animal.feedingAmount || "";
-
-  const feedingWhatInput = document.getElementById("feedingWhat");
-  if (feedingWhatInput) feedingWhatInput.value = animal.feedingWhat || "";
-
-  // Sex radios
-  const sexMale = document.getElementById("sexMale");
-  const sexFemale = document.getElementById("sexFemale");
-  if (animal.sex === "Male" && sexMale) {
-    sexMale.checked = true;
-  } else if (animal.sex === "Female" && sexFemale) {
-    sexFemale.checked = true;
+  for (const [fieldId, dataKey] of Object.entries(mapping)) {
+      const el = document.getElementById(fieldId);
+      if(el) el.value = animal[dataKey] || "";
   }
+
+  // Sex
+  if (animal.sex === "Male") document.getElementById("sexMale").checked = true;
+  else if (animal.sex === "Female") document.getElementById("sexFemale").checked = true;
 
   // Photo
   currentPhotoDataUrl = animal.photo || "";
   updatePhotoPreview(currentPhotoDataUrl);
-  if (animalPhotoInput) {
-    animalPhotoInput.value = "";
-  }
+  if (animalPhotoInput) animalPhotoInput.value = "";
 
   editId = id;
   if (submitBtn) {
@@ -411,150 +267,152 @@ function handleDelete(id) {
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Yes, delete",
-    cancelButtonText: "Cancel",
-  }).then((result) => {
+  }).then(async (result) => {
     if (result.isConfirmed) {
-      animals = animals.filter((a) => a.id !== id);
-      rerenderAll();
-      Swal.fire({
-        icon: "success",
-        title: "Deleted",
-        timer: 1200,
-        showConfirmButton: false,
-      });
-    }
-  });
-}
-
-function handleDeleteAll() {
-  if (!animals.length) return;
-  Swal.fire({
-    title: "Delete ALL animals?",
-    text: "This will clear your current session list.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Delete all",
-    cancelButtonText: "Cancel",
-  }).then((result) => {
-    if (result.isConfirmed) {
-      animals = [];
-      rerenderAll();
-      Swal.fire({
-        icon: "success",
-        title: "All animals deleted",
-        timer: 1200,
-        showConfirmButton: false,
-      });
+        // REPLACED: local filter with DB delete call
+        const success = await deleteAnimalFromDB(id);
+        if (success) {
+            Swal.fire({ icon: "success", title: "Deleted", timer: 1200, showConfirmButton: false });
+        }
     }
   });
 }
 
 // =========================
-// Details popup (SweetAlert)
+// 4. RENDERING & UI
 // =========================
-function showAnimalDetails(id) {
-  const animal = animals.find((a) => a.id === id);
-  if (!animal) {
-    Swal.fire({
-      title: "Animal Details",
-      text: "Details not found for this animal.",
-      icon: "info",
-    });
+
+function getFilteredAnimals() {
+  if (!currentSearch) return animals;
+  const term = currentSearch.toLowerCase();
+  return animals.filter((a) => 
+      (a.name || "").toLowerCase().includes(term) ||
+      (a.type || "").toLowerCase().includes(term) ||
+      (a.breed || "").toLowerCase().includes(term)
+  );
+}
+
+function renderTable() {
+  if (!animalsTableBody) return;
+  animalsTableBody.innerHTML = "";
+  const list = getFilteredAnimals();
+
+  if (!list.length) {
+    animalsTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-muted fw-bold">No animals in database.</td></tr>`;
     return;
   }
 
-  const titleText = animal.name || animal.type || "Animal";
+  list.forEach((a) => {
+    const tr = document.createElement("tr");
+    tr.dataset.id = a.id;
 
-  const photoHtml = animal.photo
-    ? `<div class="mb-3 text-center">
-         <img src="${animal.photo}" alt="Photo of ${
-        animal.type || "animal"
-      }"
-              style="max-width: 200px; max-height: 200px; object-fit: cover; border-radius: 0.5rem;">
-       </div>`
-    : "";
+    const photoCellHtml = a.photo
+      ? `<img src="${a.photo}" class="img-thumbnail" style="max-width: 60px; max-height: 60px; object-fit: cover;">`
+      : `<span class="text-muted">No photo</span>`;
 
-  const detailsHtml = `
-    ${photoHtml}
-    <p><strong>Type:</strong> ${animal.type || "-"}</p>
-    <p><strong>Breed:</strong> ${animal.breed || "-"}</p>
-    <p><strong>Sex:</strong> ${animal.sex || "-"}</p>
-    <p><strong>Birthdate:</strong> ${animal.birthdate || "-"}</p>
-    <p><strong>Weight:</strong> ${animal.weight || "-"}</p>
-    <p><strong>Size:</strong> ${animal.size || "-"}</p>
-    <p><strong>Animal ID:</strong> ${animal.animalId || "-"}</p>
-    <p><strong>Location:</strong> ${animal.location || "-"}</p>
-    <hr>
-    <p><strong>Vet Name:</strong> ${animal.vetName || "-"}</p>
-    <p><strong>Visit Type:</strong> ${animal.visitType || "-"}</p>
-    <p><strong>Visit Notes:</strong> ${animal.visitNotes || "-"}</p>
-    <hr>
-    <p><strong>Feeding Time:</strong> ${animal.feedingTime || "-"}</p>
-    <p><strong>Feeding Amount:</strong> ${
-      animal.feedingAmount || "-"
-    }</p>
-    <p><strong>Feeding What:</strong> ${animal.feedingWhat || "-"}</p>
-    <hr>
-    <p><strong>Description:</strong> ${animal.description || "-"}</p>
-    <p><strong>Notes:</strong> ${animal.notes || "-"}</p>
-  `;
-
-  Swal.fire({
-    title: titleText,
-    html: detailsHtml,
-    icon: "info",
-    width: 600,
+    tr.innerHTML = `
+      <td>${photoCellHtml}</td>
+      <td>${a.name || "-"}</td>
+      <td>${a.type || "-"}</td>
+      <td>${a.breed || "-"}</td>
+      <td>${a.sex || "-"}</td>
+      <td>${a.birthdate || "-"}</td>
+      <td>${a.location || "-"}</td>
+      <td>${a.animalId || "-"}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-1 btn-edit" type="button" data-id="${a.id}">Edit</button>
+        <button class="btn btn-sm btn-outline-danger btn-delete" type="button" data-id="${a.id}">Delete</button>
+      </td>
+    `;
+    animalsTableBody.appendChild(tr);
   });
 }
 
-// expose for cards / manual calls if needed
+function renderCards() {
+  if (!animalGrid) return;
+  animalGrid.innerHTML = "";
+  const list = getFilteredAnimals();
+
+  list.forEach((a) => {
+    const displayTitle = a.name || a.type || "Animal";
+    const imgSrc = a.photo || "https://placehold.co/300x250?text=No+Image";
+
+    const cardHTML = `
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card h-100 shadow-sm animal-card">
+          <img src="${imgSrc}" class="card-img-top" alt="${displayTitle}" style="height:200px; object-fit:cover;">
+          <div class="card-body">
+            <h5 class="card-title">${displayTitle}</h5>
+            <p class="card-text text-muted">${a.breed || ""}</p>
+            <button class="btn btn-outline-primary btn-sm w-100" type="button" onclick="showAnimalDetails('${a.id}')">See Info</button>
+          </div>
+        </div>
+      </div>
+    `;
+    animalGrid.insertAdjacentHTML("beforeend", cardHTML);
+  });
+}
+
+function rerenderAll() {
+  renderTable();
+  renderCards();
+}
+
+function showAnimalDetails(id) {
+  const animal = animals.find((a) => a.id === id);
+  if (!animal) return;
+
+  const photoHtml = animal.photo
+    ? `<div class="mb-3 text-center"><img src="${animal.photo}" style="max-width: 100%; max-height: 250px; border-radius: 8px;"></div>`
+    : "";
+
+  Swal.fire({
+    title: animal.name || animal.type,
+    html: `${photoHtml}
+           <div class="text-start">
+             <p><strong>Type:</strong> ${animal.type}</p>
+             <p><strong>Location:</strong> ${animal.location || "N/A"}</p>
+             <p><strong>Notes:</strong> ${animal.notes || "None"}</p>
+           </div>`,
+    width: 600
+  });
+}
 window.showAnimalDetails = showAnimalDetails;
 
 // =========================
-// Event listeners
+// 5. INITIALIZATION
 // =========================
-if (animalForm) {
-  animalForm.addEventListener("submit", handleSubmit);
-}
+
+if (animalForm) animalForm.addEventListener("submit", handleSubmit);
 
 if (animalsTableBody) {
   animalsTableBody.addEventListener("click", function (e) {
     const button = e.target.closest("button");
+    
+    // 1. Handle Edit/Delete Buttons
     if (button) {
       const id = button.getAttribute("data-id");
-      if (!id) return;
-
-      if (button.classList.contains("btn-edit")) {
-        handleEdit(id);
-      } else if (button.classList.contains("btn-delete")) {
-        handleDelete(id);
-      }
-      return;
+      if (button.classList.contains("btn-edit")) handleEdit(id);
+      if (button.classList.contains("btn-delete")) handleDelete(id);
+      return; // Stop here if a button was clicked
     }
 
-    // Clicking on the row (not a button) shows details
+    // 2. Handle Row Click (Show Details)
+    // This was missing in your file!
     const row = e.target.closest("tr");
-    if (!row) return;
-    const id = row.dataset.id;
-    if (id) {
-      showAnimalDetails(id);
+    if (row) {
+      const id = row.dataset.id;
+      if (id) showAnimalDetails(id);
     }
   });
 }
 
 if (searchInput) {
-  searchInput.addEventListener("input", function (e) {
+  searchInput.addEventListener("input", (e) => {
     currentSearch = e.target.value || "";
     rerenderAll();
   });
 }
 
-if (deleteAllBtn) {
-  deleteAllBtn.addEventListener("click", function () {
-    handleDeleteAll();
-  });
-}
-
-// Initial render
-rerenderAll();
-
+// IMPORTANT: Load data when page starts
+document.addEventListener("DOMContentLoaded", fetchAnimals);
