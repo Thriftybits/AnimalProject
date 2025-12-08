@@ -1,0 +1,93 @@
+Section 1:
+
+in cmd:
+
+dir
+
+(directory)
+
+cd Documents
+
+(cd is change directory)
+
+cls 
+
+(cls is clear)
+
+code . 
+
+(thats how you open this folder in vscode)
+
+cd OneDrive
+
+cd Documents
+
+cd Github
+
+cd AnimalProject
+
+
+
+C:\Users\laure\OneDrive\Documents\GitHub\AnimalProject
+
+
+
+Section 2:
+
+npm init
+
+(initalize)
+
+press enter until you hit entry point. you want index.js
+
+
+press enter until yes
+
+go to vscode, open that folder Quizlast
+
+npm install express sqlite3 uuid
+
+
+
+
+Section 3:
+
+node index.js
+
+
+
+
+Instructions: This quiz tests your understanding of setting up a basic RESTful web server using Node.js, Express, and SQLite3. 
+You will provide commands to initialize and set up the project, as well as code for four routes that perform CRUD operations 
+on a database table called tblDevices. The table has the following columns:
+
+DeviceName (TEXT)
+DeviceOwner (TEXT)
+Location (TEXT)
+Assume the server file is named index.js, the database file is devices.db, and the server listens on port 8000. 
+Use JSON for request/response bodies where appropriate (Updates, Creates, Deletes). 
+Use Query Strings for requests where appropriate (Reads). 
+For database interactions, use the sqlite3 module and prepare statements to prevent SQL injection.
+
+
+
+Section 3: CRUD Routes
+
+Provide code for four distinct routes that handle CRUD operations on tblDevices. Each route should be a complete Express route handler. Handle errors appropriately (e.g., send 500 status on DB errors, 404 if not found). For READ, return all records as JSON. For CREATE, expect JSON body with DeviceName, DeviceOwner, Location. For UPDATE, expect JSON body with DeviceName, DeviceOwner, Location. For DELETE, expect JSON body with DeviceName.
+
+READ Route (/devices): Fetch and return all devices as a JSON array.
+
+CREATE Route (/devices): Insert a new device and return a JSON message with a key of status 
+and a value of success with 201 status.
+
+UPDATE Route (/devices): Update the device with the given name based on the JSON body 
+(update only provided fields) and return a JSON message with a key of status and a value of updated.
+
+DELETE ROUTE (/devices):  Delete device with the given name and return a success message 
+as JSON with 200 status (or 404 if not found).
+
+
+
+
+
+SQLite format 3
