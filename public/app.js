@@ -139,13 +139,20 @@ function updatePhotoPreview(dataUrl) {
 }
 
 function collectFormData() {
+  // UPDATED: Handle Unknown Birthdate logic
+  const isUnknown = document.getElementById("birthdateUnknown")?.checked;
+  const birthdateVal = document.getElementById("birthdate")?.value;
+
   return {
     id: editId, // Include ID if we are editing
     name: document.getElementById("animalName")?.value.trim() || "",
     type: document.getElementById("animalType")?.value.trim() || "",
     breed: document.getElementById("breed")?.value.trim() || "",
     sex: document.querySelector("input[name='sex']:checked")?.value || "",
-    birthdate: document.getElementById("birthdate")?.value || "",
+    
+    // Logic: if checkbox checked, save 'Unknown', else save the date
+    birthdate: isUnknown ? "Unknown" : (birthdateVal || ""),
+    
     weight: document.getElementById("weight")?.value.trim() || "",
     size: document.getElementById("size")?.value.trim() || "",
     animalId: document.getElementById("animalId")?.value.trim() || "",
@@ -180,6 +187,12 @@ function resetForm() {
 
   const sexMaleRadio = document.getElementById("sexMale");
   if (sexMaleRadio) sexMaleRadio.checked = true;
+
+  // Reset Birthdate UI
+  const bdUnknown = document.getElementById("birthdateUnknown");
+  const bdInput = document.getElementById("birthdate");
+  if (bdUnknown) bdUnknown.checked = false;
+  if (bdInput) bdInput.disabled = false;
 
   editId = null;
   if (submitBtn) {
@@ -227,9 +240,9 @@ function handleEdit(id) {
 
   console.log("[Client] Loading animal into form:", animal.name);
 
-  // Fill text fields
+  // Fill text fields (removed birthdate from generic map to handle manually below)
   const mapping = {
-      animalName: "name", animalType: "type", breed: "breed", birthdate: "birthdate",
+      animalName: "name", animalType: "type", breed: "breed",
       weight: "weight", size: "size", animalId: "animalId", location: "location",
       description: "description", notes: "notes", vetName: "vetName",
       visitType: "visitType", visitNotes: "visitNotes", feedingTime: "feedingTime",
@@ -239,6 +252,18 @@ function handleEdit(id) {
   for (const [fieldId, dataKey] of Object.entries(mapping)) {
       const el = document.getElementById(fieldId);
       if(el) el.value = animal[dataKey] || "";
+  }
+
+  // UPDATED: Handle Birthdate & Unknown Checkbox
+  const bdInput = document.getElementById("birthdate");
+  const bdCheck = document.getElementById("birthdateUnknown");
+  
+  if (animal.birthdate === "Unknown") {
+      if (bdInput) { bdInput.value = ""; bdInput.disabled = true; }
+      if (bdCheck) bdCheck.checked = true;
+  } else {
+      if (bdInput) { bdInput.value = animal.birthdate || ""; bdInput.disabled = false; }
+      if (bdCheck) bdCheck.checked = false;
   }
 
   // Sex
@@ -358,6 +383,7 @@ function rerenderAll() {
   renderCards();
 }
 
+// UPDATED: Show ALL details in the popup
 function showAnimalDetails(id) {
   const animal = animals.find((a) => a.id === id);
   if (!animal) return;
@@ -366,15 +392,52 @@ function showAnimalDetails(id) {
     ? `<div class="mb-3 text-center"><img src="${animal.photo}" style="max-width: 100%; max-height: 250px; border-radius: 8px;"></div>`
     : "";
 
+  const content = `
+    ${photoHtml}
+    <div class="text-start">
+      <div class="row">
+        <div class="col-6"><p><strong>Type:</strong> ${animal.type}</p></div>
+        <div class="col-6"><p><strong>Breed:</strong> ${animal.breed || 'N/A'}</p></div>
+      </div>
+      <div class="row">
+        <div class="col-6"><p><strong>Sex:</strong> ${animal.sex || 'N/A'}</p></div>
+        <div class="col-6"><p><strong>Birthdate:</strong> ${animal.birthdate || 'Unknown'}</p></div>
+      </div>
+      <div class="row">
+        <div class="col-6"><p><strong>Weight:</strong> ${animal.weight || 'N/A'}</p></div>
+        <div class="col-6"><p><strong>Size:</strong> ${animal.size || 'N/A'}</p></div>
+      </div>
+      <div class="row">
+        <div class="col-6"><p><strong>Location:</strong> ${animal.location || 'N/A'}</p></div>
+        <div class="col-6"><p><strong>ID:</strong> ${animal.animalId || 'N/A'}</p></div>
+      </div>
+      
+      <hr>
+      <p><strong>Description:</strong> ${animal.description || 'None'}</p>
+      <p><strong>Notes:</strong> ${animal.notes || 'None'}</p>
+      
+      <hr>
+      <h6 class="fw-bold text-primary">Vet Info</h6>
+      <p class="mb-1"><strong>Vet:</strong> ${animal.vetName || 'N/A'}</p>
+      <p class="mb-1"><strong>Type:</strong> ${animal.visitType || 'N/A'}</p>
+      <p><strong>Notes:</strong> ${animal.visitNotes || 'None'}</p>
+      
+      <hr>
+      <h6 class="fw-bold text-primary">Feeding Info</h6>
+      <div class="row">
+        <div class="col-4"><p><strong>Time:</strong><br>${animal.feedingTime || 'N/A'}</p></div>
+        <div class="col-4"><p><strong>Amount:</strong><br>${animal.feedingAmount || 'N/A'}</p></div>
+        <div class="col-4"><p><strong>Food:</strong><br>${animal.feedingWhat || 'N/A'}</p></div>
+      </div>
+    </div>
+  `;
+
   Swal.fire({
     title: animal.name || animal.type,
-    html: `${photoHtml}
-           <div class="text-start">
-             <p><strong>Type:</strong> ${animal.type}</p>
-             <p><strong>Location:</strong> ${animal.location || "N/A"}</p>
-             <p><strong>Notes:</strong> ${animal.notes || "None"}</p>
-           </div>`,
-    width: 600
+    html: content,
+    width: 600,
+    showCloseButton: true,
+    confirmButtonText: 'Close'
   });
 }
 window.showAnimalDetails = showAnimalDetails;
@@ -384,6 +447,22 @@ window.showAnimalDetails = showAnimalDetails;
 // =========================
 
 if (animalForm) animalForm.addEventListener("submit", handleSubmit);
+
+// NEW: Listener to toggle date input when "Unknown" is checked
+const birthdateUnknownCheckbox = document.getElementById("birthdateUnknown");
+if (birthdateUnknownCheckbox) {
+    birthdateUnknownCheckbox.addEventListener("change", function() {
+        const dateInput = document.getElementById("birthdate");
+        if (!dateInput) return;
+        
+        if (this.checked) {
+            dateInput.value = "";
+            dateInput.disabled = true;
+        } else {
+            dateInput.disabled = false;
+        }
+    });
+}
 
 if (animalsTableBody) {
   animalsTableBody.addEventListener("click", function (e) {

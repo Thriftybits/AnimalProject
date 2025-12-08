@@ -36,6 +36,7 @@
     </header>
 
     <div class="row g-4">
+      <!-- ================= LEFT SIDE: FORM ================= -->
       <section class="col-lg-5" aria-labelledby="form-heading">
         <div class="card h-100 sketch-card border-0 bg-transparent">
           <div class="card-body bg-white sketch-border sketch-shadow rounded-4 p-4">
@@ -44,6 +45,7 @@
               <h2 id="form-heading" class="h4 mb-0 fw-bold text-black">Add Animal</h2>
             </div>
 
+            <!-- SINGLE form tag (fixed duplicate) -->
             <form id="animalForm" novalidate>
               <div class="mb-3">
                 <label for="animalName" class="form-label fw-bold text-black">
@@ -190,6 +192,7 @@
                 ></textarea>
               </div>
 
+              <!-- PHOTO UPLOAD (from old.html, upgraded with preview) -->
               <div class="mb-3">
                 <label for="animalPhoto" class="form-label fw-bold text-black">Animal Photo</label>
                 <input
@@ -201,6 +204,7 @@
                 />
                 <small class="text-muted">Image is stored in the database.</small>
 
+                <!-- Live preview -->
                 <div class="mt-2 text-center">
                   <img
                     id="animalPhotoPreview"
@@ -263,7 +267,7 @@
 
               <div class="mt-4 text-end">
                 <button type="submit" class="btn btn-success sketch-btn rounded-pill px-4 fw-bold text-black">
-                  Save Animal (Local)
+                  Save Animal
                 </button>
               </div>
             </form>
@@ -271,6 +275,7 @@
         </div>
       </section>
 
+      <!-- ================= RIGHT SIDE: SAVED ANIMALS ================= -->
       <section class="col-lg-7" aria-labelledby="list-heading">
         <div class="card h-100 border-0 bg-transparent">
           <div class="card-body bg-white sketch-border sketch-shadow rounded-4 p-4">
@@ -326,8 +331,7 @@
               </div>
 
             <p class="text-muted small mb-0 fw-bold mt-3">
-              Right now this list is stored in memory in your browser.  
-              Can later connect it to the Node / SQLite backend.
+              Preview of your animals saved.
             </p>
           </div>
         </div>
