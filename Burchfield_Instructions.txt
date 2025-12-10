@@ -1,0 +1,18 @@
+HOW TO RUN THIS PROJECT
+
+1. Unzip the folder.
+2. Open the folder in VS Code.
+3. Open a Terminal (Ctrl + `) and make sure you are in the project folder.
+
+4. INSTALL:
+   npm install
+
+   (This downloads the libraries listed in package.json)
+
+5. START THE SERVER:
+   Type this command and hit Enter:
+   node index.js
+
+6. USE THE APP:
+   Open your web browser and go to:
+   http://localhost:8000
