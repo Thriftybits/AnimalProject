@@ -1,0 +1,54 @@
+Section 1:
+
+in cmd:
+
+dir
+
+(directory)
+
+cd Documents
+
+(cd is change directory)
+
+cls 
+
+(cls is clear)
+
+code . 
+
+(thats how you open this folder in vscode)
+
+cd OneDrive
+
+cd Documents
+
+cd Github
+
+cd AnimalProject
+
+
+
+Section 2:
+
+npm init
+
+(initalize)
+
+press enter until you hit entry point. you want index.js
+
+
+press enter until yes
+
+go to vscode, open that folder AnimalProject
+
+npm install express sqlite3 uuid
+
+
+
+
+Section 3:
+
+node index.js
+
+
+C:\Users\username\OneDrive\Documents\GitHub\AnimalProject
