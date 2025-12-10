@@ -4,8 +4,7 @@ HOW TO RUN THIS PROJECT
 2. Open the folder in VS Code.
 3. Open a Terminal (Ctrl + `) and make sure you are in the project folder.
 
-4. INSTALL DEPENDENCIES:
-   Type this command and hit Enter:
+4. INSTALL:
    npm install
 
    (This downloads the libraries listed in package.json)
